@@ -39,7 +39,7 @@ function Install_Required_Packages() {
     sudo apt install openssl gpg dpkg-sig reprepro apache2 cron moreutils -y
     if ! grep -q "updatepackages.sh" < /etc/crontab; then
         cat << EOF | sudo tee -a /etc/crontab
-0  */6   * * *   $TUSER   cd $PWD && bash updatepackages.sh 2>&1|ts >>/home/$TUSER/.cache/apt-repo/apt_repo_updatepackages.log
+0  */3   * * *   $TUSER   cd $PWD && bash updatepackages.sh 2>&1|ts >>/home/$TUSER/.cache/apt-repo/apt_repo_updatepackages.log
 EOF
     fi
     sudo systemctl restart cron
