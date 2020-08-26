@@ -8,11 +8,12 @@ function help() {
     echo
     echo "Add deb and source to the apt repository."
     echo
-    echo "Syntax: bash Add_to_APT_Repository.sh dist repo codename crp_rep_url"
+    echo "Syntax: bash Add_to_APT_Repository.sh dist repo codename components crp_rep_url"
     echo "options:"
     echo "just one dist:stable unstable and so on"
-    echo "just one repo: device-gui device-cli and so on"
-    echo "just one codename: fou fou/sp1 fou/sp2"
+    echo "just one repo: device  and so on"
+    echo "just one codename: mars mars/sp2 venus venus/sp1 and so on"
+    echo "components:main contrib non-free"
     echo "just one crp_rep_url or local dir path"
     #    echo "Tmp_Dir: default at ~/tmp/debs"
 
@@ -29,7 +30,7 @@ for dist in "${dists[@]}"; do
         APTURL=/var/www/repos/$1
     fi
 done
-if [ ! -n "$APTURL" ]; then
+if [ -z "$APTURL" ]; then
     help
     echo "Pleaase check the dist name."
     echo "The system has dists list:${dists[*]}"
@@ -44,7 +45,7 @@ for repo in "${repos[@]}"; do
         REPO=$2
     fi
 done
-if [ ! -n "$REPO" ]; then
+if [ -z "$REPO" ]; then
     help
     echo "Pleaase check the repos."
     echo "The system has repos list:${repos[*]}"
@@ -57,21 +58,22 @@ REPOSDIR="$APTURL"/"$REPO"
 read -ra codenames <<< "$(grep Codename < "$REPOSDIR"/conf/distributions | awk '{ print $2 }' | tr '\n' ' ')"
 # common function
 CODENAME=$(check_word_in_array "$3" "${codenames[*]}")
-if [ ! -n "$CODENAME" ]; then
+if [ -z "$CODENAME" ]; then
     echo "Pleaase check the codename."
     echo "The system has codename list:${codenames[*]}"
     exit 0
 fi
-
+COMP=$4
 TUSER=$(whoami)
 #echo "$TUSER"
 DEBDIR=/home/"$TUSER"/tmp/debs
 mkdir -p "$DEBDIR" && cd "$_" || exit
-URL=$4
+URL=$5
 # common function
 isurl=$(check_url "$URL")
 if [ "$isurl" == 0 ] && [ "${URL: -1}" == "/" ]; then
-    wget -r -p -np -k "$URL"
+    # httrack -s0 -w "$URL"
+    wget --mirror -e robots=off -r -np --tries=10 "$URL"
 elif [ -d "$URL" ]; then
     rsync -r "$URL" .
 else
@@ -80,6 +82,6 @@ else
     exit 0
 fi
 
-add_to_repository "$TUSER" "$REPOSDIR" "$CODENAME" "$DEBDIR"
+add_to_repository "$TUSER" "$REPOSDIR" "$CODENAME" "$COMP" "$DEBDIR"
 echo "Clening:delete the $DEBDIR"
 sudo rm -rf "$DEBDIR"

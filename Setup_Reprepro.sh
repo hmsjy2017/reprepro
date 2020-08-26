@@ -12,13 +12,14 @@ function help() {
     echo "Syntax: bash Setup_Reprepro.sh"
     echo "Input:can set several at once"
     echo "dists:stable unstable and so on "
-    echo "repos:device-gui device-cli and so on"
-    echo "codenames: fou fou/sp1 fou/sp2 and so on"
+    echo "repos:device and so on"
+    echo "gui codenames: mars mars/sp1 mars/sp2 and so on"
+    echo "gui codenames: venus venus/sp1 venus/sp2 and so on"
 }
 loadhelp "$1"
 read -ra DISTS -p "Please input the apt dist name,E.g stable unstable:"
-read -ra REPOS -p "Please input the apt repos name,E.g device-gui device-cli:"
-read -ra CODES -p "Please input the codenames,E.g fou fou/sp1 fou/sp2:"
+read -ra REPOS -p "Please input the apt repos name,E.g device:"
+read -ra CODES -p "Please input the codenames,E.g mars mars/sp1 venus venus/sp1:"
 GPGNAME=devicepackages
 GPGEMAIL=devicepackages@uniontech.com
 SERVERNAME=localhost

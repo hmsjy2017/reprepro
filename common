@@ -24,7 +24,7 @@ function loadhelp() {
     fi
 }
 function loadhelpall() {
-    if [ "$1" == "-h" ] || [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ ! -n "$*" ]; then
+    if [ "$1" == "-h" ] || [ "$1" == "--help" ] || [ "$1" == "-help" ] || [ -z "$*" ]; then
         help
         exit 0
     fi
@@ -36,7 +36,7 @@ function Install_Required_Packages() {
     sudo chmod 644 /etc/passwd
     sudo chmod 644 /etc/group
     echo "Installing required packages"
-    sudo apt install openssl gpg dpkg-sig reprepro apache2 cron moreutils -y
+    sudo apt install openssl gpg dpkg-sig reprepro apache2 cron moreutils httrack -y
     if ! grep -q "updatepackages.sh" < /etc/crontab; then
         cat << EOF | sudo tee -a /etc/crontab
 0  */3   * * *   $TUSER   cd $PWD && bash updatepackages.sh 2>&1|ts >>/home/$TUSER/.cache/apt-repo/apt_repo_updatepackages.log
@@ -179,26 +179,49 @@ Configure_Reprepro() {
         for code in ${new_codename[*]}; do
             result=$(echo "$code" | grep "/")
             CODENAME=$code
-            if [[ "$result" == "" ]]; then
-                UPDATE=$code
-            else
-                UPDATE=$(echo "$code" | awk -F "/" '{ print $2 }')
-            fi
+            # if [[ "$result" == "" ]]; then
+            #     UPDATE=$code
+            # else
+            #     UPDATE=$(echo "$code" | awk -F "/" '{ print $2 }')
+            # fi
             cat << EOF | sudo tee -a "$APTURL"/"$apt"/conf/distributions
 Origin: UOS Device
 Label: Device
 Codename: $CODENAME
-Version: 2019
-Update: $UPDATE
+Version: 2020
+Update: uos $CODENAME
 Architectures: amd64 arm64 mips64el sw_64 source
-Components: main
+Components: main contrib non-free
 UDebComponents: main
 Contents: percomponent nocompatsymlink .bz2
 SignWith: $GPGEMAIL
 Description: UOS Device Packages
 
 EOF
+            #             if [[ "$APTURL" == /var/www/repos/stable ]]; then
+            #                 cat << EOF | sudo tee -a "$APTURL"/"$apt"/conf/updates
+            # Name: $CODENAME
+            # Suite: $CODENAME
+            # Architectures: amd64 arm64 mips64el sw_64 source
+            # Components: main contrib non-free
+            # Method: http://10.8.0.113/unstable/device/
+            # #Method: file:///data/repo-dev-wh/ppa/dde-apricot
+            # VerifyRelease: blindtrust
+
+            # EOF
+            #             fi
         done
+        #         if [ ! -f "$APTURL"/"$apt"/conf/updates ] && [ "$APTURL" == /var/www/repos/stable ]; then
+        #             cat << EOF | sudo tee "$APTURL"/"$apt"/conf/updates
+        # Name: uos
+        # Suite: stable
+        # Architectures: amd64 arm64 mips64el sw_64 source
+        # Components: main contrib non-free
+        # Method: http://pools.uniontech.com/ppa/uos-base/
+        # #Method: file:///data/repo-dev-wh/ppa/dde-apricot
+        # VerifyRelease: blindtrust
+        # EOF
+        #         fi
     done
 
     for apt in ${REPOS[*]}; do
@@ -225,7 +248,8 @@ function add_to_repository() {
     TUSER=$1
     REPOSDIR=$2
     CODENAME=$3
-    DEBDIR=$4
+    COMP=$4
+    DEBDIR=$5
     find "$DEBDIR" -name "*.deb" -exec sudo GNUPGHOME=/home/"$TUSER"/.gnupg dpkg-sig --sign builder {} +
     debs=("$(find . -name "*.deb")")
     # first remove the exist same packages
@@ -236,10 +260,10 @@ function add_to_repository() {
         sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro --ask-passphrase -Vb "$REPOSDIR" removesrc "$CODENAME" "$debname"
     done
 
-    find "$DEBDIR" -name "*.deb" -exec sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro --ask-passphrase -Vb "$REPOSDIR" includedeb "$CODENAME" {} +
+    find "$DEBDIR" -name "*.deb" -exec sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro -C "$COMP" --ask-passphrase -Vb "$REPOSDIR" includedeb "$CODENAME" {} +
     decs=$(find "$DEBDIR" -name "*.dsc")
     for dec in $decs; do
-        sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro --ask-passphrase -Vb "$REPOSDIR" includedsc "$CODENAME" "$dec"
+        sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro -C "$COMP" --ask-passphrase -Vb "$REPOSDIR" includedsc "$CODENAME" "$dec"
     done
     cd "$REPOSDIR" || exit
     sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro export

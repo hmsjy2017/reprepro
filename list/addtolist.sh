@@ -13,22 +13,27 @@ function help() {
     echo "Syntax: bash addtolist URL unstable_device-gui_fou-sp2.list"
     echo "options:"
     echo "dist:stable unstable and so on"
-    echo "repo: device-gui device-cli and so on"
-    echo "codename: fou fou/sp1 fou/sp2 and so on"
-    echo "Please Notice:Eg. fou/sp2 replaced by fou-sp2"
+    echo "repo: device and so on"
+    echo "codename: mars mars/sp1 venus venus/sp1 and so on"
+    echo "Please Notice:Eg. mars/sp1 replaced by mars-sp1"
+    echo "components:main contrib non-free"
 }
 # common function
 loadhelpall "$*"
 URL=$1
-if [ ! -n "$2" ]; then
-    echo "Please input list name,E.g: unstable_device-gui_fou-sp2.list"
+if [ -z "$2" ]; then
+    echo "Please input list name,E.g: unstable_device_mars-sp1_main.list"
 fi
 LIST=$2
-isurl=$(check_url "$URL")
-if [ "$isurl" == 0 ] && [ "${URL: -1}" == "/" ]; then
+if [ "${URL: -1}" == "/" ]; then
     :
-elif     [ "$isurl" == 0 ] && [ "${URL: -1}" != "/" ]; then
+else
     URL=$URL"/"
+fi
+
+isurl=$(check_url "$URL")
+if [ "$isurl" == 0 ]; then
+    :
 else
     echo "Please check the URL: $URL"
     exit 1
@@ -36,7 +41,21 @@ fi
 
 function getwebdir() {
     URL=$1
-    read -ra WEBDIR <<< "$(wget -O - "$URL" 2> /dev/null | grep href= | awk -F '"' '{print $2}' | tr "\\n" " ")"
+    i=0
+    read -ra WEBDIR <<< "$(wget -O - "$URL" 2> /dev/null | grep -o -P  '(href=.*?>)' | grep -o -P '(?<=href=").*(?=">)' | grep -v "^\?" | grep -v "^\\/" | grep -v "^Name</a>" | grep -v "^Parent Directory$" | sort | uniq | tr "\\n" " ")"
+
+    for d in ${WEBDIR[*]}; do
+        if [ "${d: -2}" == "./" ]; then
+            unset "WEBDIR[$i]"
+        fi
+        if [ "${d:0:2}" == "./" ]; then
+            WEBDIR[$i]="${d:2}"
+        fi
+        if [ "${d:0:3}" == "../" ]; then
+            WEBDIR[$i]="${d:3}"
+        fi
+        i=$((i + 1))
+    done
     for d in ${WEBDIR[*]}; do
         URL=$1
         if [ "${d: -1}" == "/" ]; then
