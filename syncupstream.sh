@@ -8,17 +8,24 @@ function help() {
     echo
     echo "Sync apt Repositoryform Upstream."
     echo
-    echo "Syntax: bash syncupstream.sh codename [base|device|all]"
+    echo "Syntax: bash syncupstream.sh codename [syncbase|syncdevice|syncall|checkbase|checkdevice|checkall]"
     echo "options:"
     echo "codename: mars mars/sp2 venus venus/sp1 and so on"
-    echo "base:http://pools.uniontech.com/ppa/uos-base/"
-    echo "device:http://10.8.0.113/unstable/device/"
-    echo "all:base+device"
+    echo "[sync|check]base:http://pools.uniontech.com/ppa/uos-base/"
+    echo "[sync|check]device:http://10.8.0.113/unstable/device/"
+    echo "[sync|check]all:base+device"
 }
 
 loadhelpall "$*"
 
-read -ra codenames <<< "$(grep Codename < "$REPOSDIR"/conf/distributions | awk '{ print $2 }' | tr '\n' ' ')"
+case $3 in
+    force | f | --force | -f)
+        FORCE="--noskipold"
+        ;;
+    *) ;;
+
+esac
+read -ra codenames <<< "$(grep Codename < /var/www/repos/stable/device/conf/distributions | awk '{ print $2 }' | tr '\n' ' ')"
 # common function
 CODENAME=$(check_word_in_array "$1" "${codenames[*]}")
 if [ -z "$CODENAME" ]; then
@@ -27,17 +34,18 @@ if [ -z "$CODENAME" ]; then
     exit 0
 fi
 
-# TUSER=$(whoami)
+TUSER=$( whoami)
 # MYDIR=$(
 #     cd "$(dirname "$0")" || exit
 #     pwd
 # )
 
 function syncbase() {
+    TUSER=$( whoami)
     CODENAME="$1"
     if [[ -d /var/www/repos/stable/device/ ]]; then
         pushd /var/www/repos/stable/device/ > /dev/null || exit
-        sudo sed -ri 's/^Update/Update: uos/g' conf/distributions
+        sudo sed -ri 's/^Update.*?/Update: uos/g' conf/distributions
         cat << EOF | sudo tee conf/updates
 Name: uos
 Suite: stable
@@ -47,44 +55,112 @@ Method: http://pools.uniontech.com/ppa/uos-base/
 #Method: file:///data/repo-dev-wh/ppa/dde-apricot
 VerifyRelease: blindtrust
 EOF
-        sudo reprepro update "$CODENAME"
+        if [[ -z "$2" ]]; then
+            sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro -V update "$CODENAME"
+        else
+            sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro -V "$2" update "$CODENAME"
+        fi
         popd > /dev/null || exit
     fi
 }
 function syncdevice() {
+    TUSER=$( whoami)
+    CODENAME="$1"
+    if [[ -z "$2" ]]; then
+        shift 1
+    else
+        shift 2
+    fi
+    codenames=("$@")
+    if [[ -d /var/www/repos/stable/device/ ]]; then
+        pushd /var/www/repos/stable/device/ > /dev/null || exit
+        sudo rm -f conf/updates
+        for codename in ${codenames[*]}; do
+            sudo sed -ri "s/^Update:[ ]*uos[ ]*$codename/Update: $codename/g" conf/distributions
+            cat << EOF | sudo tee -a conf/updates
+Name: $codename
+Suite: $codename
+Architectures: amd64 arm64 mips64el sw_64 source
+Components: main contrib non-free
+Method: http://127.0.0.1/unstable/device/
+#Method: file:///data/repo-dev-wh/ppa/dde-apricot
+VerifyRelease: blindtrust
+
+EOF
+        done
+        if [[ -z "$2" ]]; then
+            sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro -V update "$CODENAME"
+        else
+            sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro -V "$2" update "$CODENAME"
+        fi
+        popd > /dev/null || exit
+    fi
+}
+function check_base() {
+    TUSER=$( whoami)
+    CODENAME="$1"
+    if [[ -d /var/www/repos/stable/device/ ]]; then
+        pushd /var/www/repos/stable/device/ > /dev/null || exit
+        sudo sed -ri 's/^Update.*?/Update: uos/g' conf/distributions
+        cat << EOF | sudo tee conf/updates
+Name: uos
+Suite: stable
+Architectures: amd64 arm64 mips64el sw_64 source
+Components: main contrib non-free
+Method: http://pools.uniontech.com/ppa/uos-base/
+#Method: file:///data/repo-dev-wh/ppa/dde-apricot
+VerifyRelease: blindtrust
+EOF
+        sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro -V --noskipold checkupdate "$CODENAME" | grep -v kept
+        popd > /dev/null || exit
+    fi
+}
+
+function check_device() {
+    TUSER=$( whoami)
     CODENAME="$1"
     shift 1
     codenames=("$@")
     if [[ -d /var/www/repos/stable/device/ ]]; then
         pushd /var/www/repos/stable/device/ > /dev/null || exit
         sudo rm -f conf/updates
-        for codename in "${codenames[@]}"; do
-            sudo sed -ri 's/^Update:[ ]*uos[ ]*$codename/Update: $codename/g' conf/distributions
+        for codename in ${codenames[*]}; do
+            sudo sed -ri "s/^Update:[ ]*uos[ ]*$codename/Update: $codename/g" conf/distributions
             cat << EOF | sudo tee -a conf/updates
 Name: $codename
 Suite: $codename
 Architectures: amd64 arm64 mips64el sw_64 source
 Components: main contrib non-free
-Method: http://10.8.0.113/unstable/device/
+Method: http://127.0.0.1/unstable/device/
 #Method: file:///data/repo-dev-wh/ppa/dde-apricot
 VerifyRelease: blindtrust
 
 EOF
         done
-        sudo reprepro update "$CODENAME"
+        sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro -V --noskipold checkupdate "$CODENAME" | grep -v kept
         popd > /dev/null || exit
     fi
 }
 case $2 in
-    base)
-        syncbase "$CODENAME"
+    syncbase)
+        syncbase "$CODENAME" "$FORCE"
         ;;
-    device)
-        syncdevice "$CODENAME" "${codenames[*]}"
+    syncdevice)
+        syncdevice "$CODENAME" "$FORCE" "${codenames[*]}"
         ;;
-    all)
-        syncbase "$CODENAME"
-        syncdevice "$CODENAME" "${codenames[*]}"
+    syncall)
+        syncbase "$CODENAME" "$FORCE"
+        syncdevice "$CODENAME" "$FORCE" "${codenames[*]}"
+        ;;
+    checkbase)
+        check_base "$CODENAME"
+        ;;
+    checkdevice)
+        check_device "$CODENAME" "${codenames[*]}"
+        ;;
+    checkall)
+        check_base "$CODENAME"
+        check_device "$CODENAME" "${codenames[*]}"
         ;;
     *) ;;
 

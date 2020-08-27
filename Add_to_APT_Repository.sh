@@ -73,7 +73,7 @@ URL=$5
 isurl=$(check_url "$URL")
 if [ "$isurl" == 0 ] && [ "${URL: -1}" == "/" ]; then
     # httrack -s0 -w "$URL"
-    wget --mirror -e robots=off -r -np --tries=10 "$URL"
+    wget --mirror -e robots=off -r -np "$URL"
 elif [ -d "$URL" ]; then
     rsync -r "$URL" .
 else

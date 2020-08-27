@@ -10,8 +10,8 @@ function help() {
     echo "Syntax: bash Man_APT_Repository.sh dist repo codename action packagename"
     echo "options:"
     echo "just one dist:stable unstable and so on"
-    echo "just one repo: device-gui device-cli and so on"
-    echo "just one codename: fou fou/sp1 fou/sp2 and so on"
+    echo "just one repo: device and so on"
+    echo "just one codename: mars mars/sp2 venus venus/sp1 and so on"
     echo "just one action: list remove"
     echo "one or more packagename:will be removed package name."
     echo "remove will delte the deb and source."
@@ -29,7 +29,7 @@ for dist in "${dists[@]}"; do
         APTURL=/var/www/repos/$1
     fi
 done
-if [ ! -n "$APTURL" ]; then
+if [ -z "$APTURL" ]; then
     help
     echo "Pleaase check the dist name."
     echo "The system has dists list:${dists[*]}"
@@ -45,7 +45,7 @@ for repo in "${repos[@]}"; do
         REPO=$2
     fi
 done
-if [ ! -n "$REPO" ]; then
+if [ -z "$REPO" ]; then
     help
     echo "Pleaase check the repos."
     echo "The system has repos list:${repos[*]}"
@@ -58,7 +58,7 @@ REPOSDIR="$APTURL"/"$REPO"
 read -ra codenames <<< "$(grep Codename < "$REPOSDIR"/conf/distributions | awk '{ print $2 }' | tr '\n' ' ')"
 # common function
 CODENAME=$(check_word_in_array "$3" "${codenames[*]}")
-if [ ! -n "$CODENAME" ]; then
+if [ -z "$CODENAME" ]; then
     echo "Pleaase check the codename."
     echo "The system has codename list:${codenames[*]}"
     exit 0

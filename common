@@ -110,7 +110,20 @@ EOF
 function Configure_Apache2_with_reprepro() {
     SERVERNAME=$1
     APACHE2CONF=/etc/apache2/apache2.conf
-    sudo mkdir -p /var/www/repos/
+    if [ ! -d /var/www/repos ]; then
+        read -rp "Will you create a symlink to /var/www/repos/? yes or no" yesno
+        if [[ $yesno == yes ]] || [[ $yesno == y ]] || [[ $yesno == Y ]] || [[ $yesno == YES ]]; then
+            read -rp "Input the soure path:E.g /data" DATA
+            if [[ -d "$DATA" ]]; then
+                sudo ln -s "$DATA" /var/www/repos
+            else
+                echo "Please check your input source path."
+                Configure_Apache2_with_reprepro "$SERVERNAME"
+            fi
+        else
+            sudo mkdir -p /var/www/repos/
+        fi
+    fi
     # Set the default 80 site to the apt
     sudo sed -i -r -e "/DocumentRoot/c\\        DocumentRoot /var/www/repos" /etc/apache2/sites-available/000-default.conf
     if [ -f $APACHE2CONF ]; then
@@ -196,6 +209,7 @@ UDebComponents: main
 Contents: percomponent nocompatsymlink .bz2
 SignWith: $GPGEMAIL
 Description: UOS Device Packages
+Log: uos_$CODENAME.log
 
 EOF
             #             if [[ "$APTURL" == /var/www/repos/stable ]]; then
@@ -228,7 +242,7 @@ EOF
         cd "$APTURL"/"$apt"/ || exit
         sudo GNUPGHOME="${PUBLIC_KEY_URL%/*}" reprepro export
     done
-    sudo cp "$PUBLIC_KEY_URL" "$APTURL"/devicepackages.key
+    # sudo cp "$PUBLIC_KEY_URL" "$APTURL"/devicepackages.key
 }
 
 pause() {
@@ -291,8 +305,8 @@ function remove_packages() {
             echo "$P"
             exit 1
         )
-        sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro --ask-passphrase -Vb "$REPOSDIR" remove "$CODENAME" "$P"
-        sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro --ask-passphrase -Vb "$REPOSDIR" removesrc "$CODENAME" "$P"
+        sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro --morguedir  +b/morguedir/"$CODENAME" --ask-passphrase -Vb "$REPOSDIR" remove "$CODENAME" "$P"
+        sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro --morguedir  +b/morguedir/"$CODENAME" --ask-passphrase -Vb "$REPOSDIR" removesrc "$CODENAME" "$P"
     done
 }
 

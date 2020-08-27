@@ -1,8 +1,8 @@
 #!/usr/bin/bash
 #v1.0 by sandylaw <freelxs@gmail.com> 2020-08-17
 #This script is add list of packages to the list.
-#Eg. bash addtolist $URL unstable_device-gui_fou-sp2.list
-#fou/sp2 replaced by fou-sp2.
+#Eg. bash addtolist $URL unstable_device_mars-sp1_comps.list
+#mars/sp1 replaced by mars-sp1.
 # shellcheck disable=SC1091
 source ../common
 function help() {
@@ -10,7 +10,7 @@ function help() {
     echo
     echo "Add list of packages to the list file."
     echo
-    echo "Syntax: bash addtolist URL unstable_device-gui_fou-sp2.list"
+    echo "Syntax: bash addtolist URL unstable_device_mars-sp1_comps.list"
     echo "options:"
     echo "dist:stable unstable and so on"
     echo "repo: device and so on"
