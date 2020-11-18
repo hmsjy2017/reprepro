@@ -1,6 +1,6 @@
 # CRP代码构建平台的使用简介
 
-<https://crp.uniontech.com/>    用户名：姓名全拼 密码：ut帐号的密码
+<https://crp.uniontech.com/>    用户名：姓名全拼， 密码：ut帐号的密码
 
 Wiki教程：[CRP代码构建平台基本使用](https://wikidev.uniontech.com/index.php?title=CRP代码构建平台基本使用)
 
@@ -8,10 +8,10 @@ Wiki教程：[CRP代码构建平台基本使用](https://wikidev.uniontech.com/i
 
 ## 使用crp平台构建device软件包
 
-01. 分支：选择fou/sp2
-02. 仓库管理：已建fou-device ***后期更新sp3时，找 胡登 添加对应的 fou-device，以此类推***
+01. 分支：选择mars 或者 venus
+02. 仓库管理：与分支一致。如需要增加，找 胡登 添加。
 
-03. 项目管理：左侧 选择 分组`device`，右侧将出现已经创建的项目：`base-files, deepin-desktop-base, deepin-desktop-schemas`
+03. 项目管理：左侧 选择 分组`device-gui`或者`device-cli`，`右侧将出现已经创建的项目：`base-files, deepin-desktop-base, iso-tailor`
 
    创建项目注意事项：
 
@@ -26,9 +26,9 @@ Wiki教程：[CRP代码构建平台基本使用](https://wikidev.uniontech.com/i
 
    左侧点击device-gui: 将出现关联的打包任务。
 
-   上方有对应的子仓库地址：`deb [trusted=yes] http://shuttle.corp.deepin.com/cache/repos/fou-device/release-candidate/ZGV2aWNlLWd1aTEyNTM unstable main contrib non-free`
+   mars子仓库地址：` deb  [trusted=yes] http://shuttle.corp.deepin.com/cache/repos/mars/release-candidate/bWFyczIwMjAtMDktMTE  unstable main`
 
-   可以浏览器访问 <http://shuttle.corp.deepin.com/cache/repos/fou-device/release-candidate/ZGV2aWNlLWd1aTEyNTM>
+  venus子仓库地址：` deb  [trusted=yes] http://shuttle.corp.deepin.com/cache/repos/venus/release-candidate/dmVudXMyMDIwLTA5LTEx  unstable main`
 
 05. crp打包
 
@@ -47,4 +47,4 @@ Wiki教程：[CRP代码构建平台基本使用](https://wikidev.uniontech.com/i
 
 06. 复制对应的子仓库地址，在后面加一个`/`，添加到自建软件仓库。
 
-07. 当再一次更新gitlab时，请先到测试主题，**放弃**对应的任务，将从子仓库中移除对应的软件包，否则同名同版本号的软件包无法生成。
+07. 当再一次更新gitlab时，**一定要升级版本号之后再构建！**

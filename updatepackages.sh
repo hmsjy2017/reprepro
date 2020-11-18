@@ -2,7 +2,24 @@
 #v1.1 by sandylaw <freelxs@gmail.com> 2020-08-26
 #This script is add packages of update/dist_repo_codename_comps.list to the apt repos.
 #Eg. unstable_device_mars-sp1_main.list
-
+function help() {
+    # Display Help
+    cat << EOF
+    Update packages of the list/*.list
+    
+    Syntax: bash updatepackages.sh [copy]
+    Setting:list/*.list"
+    copy:Add the same packages to multi repos.
+    /etc/crontab has set a cron task.
+EOF
+}
+function loadhelp() {
+    if [[ "$1" == -h ]] || [[ "$1" == --help ]]; then
+        help
+        exit 0
+    fi
+}
+loadhelp "$1"
 TUSER=$(whoami)
 MYDIR=$(
     cd "$(dirname "$0")" || exit
@@ -14,6 +31,7 @@ CACHEDIR=/home/$TUSER/.cache/apt-repo
 if [ ! -d "$CACHEDIR" ]; then
     mkdir -p "$CACHEDIR"
 fi
+COPY=$1
 pushd /var/www/repos > /dev/null || exit
 read -ra dists <<< "$(find . -maxdepth 1 -type d | awk -F "/" '{ print $2 }' | tr '\n' ' ')"
 popd > /dev/null || exit
@@ -28,7 +46,12 @@ for dist in "${dists[@]}"; do
         read -ra codenames <<< "$(grep Codename < "$REPOSDIR"/conf/distributions | awk '{ print $2 }' | tr '\n' ' ')"
         for codename in "${codenames[@]}"; do
             for comp in "${comps[@]}"; do
-                listname=$(echo "$dist"_"$repo"_"$codename"_"$comp" | tr "/" "-")
+                if [ "$COPY" == "copy" ]; then
+                    DEST_CODE="${codename//mars/venus}"
+                    listname=$(echo "$dist"_"$repo"_"$codename"_"$comp"_copy_"$DEST_CODE" | tr "/" "-")
+                else
+                    listname=$(echo "$dist"_"$repo"_"$codename"_"$comp" | tr "/" "-")
+                fi
                 if [ -f list/"$listname".list ]; then
                     for line in $(< list/"$listname".list); do
                         SRC="$line"
@@ -36,13 +59,21 @@ for dist in "${dists[@]}"; do
                         filename="$listname"_$(basename "$SRC")
                         pwd
                         pushd "$CACHEDIR" > /dev/null || exit
-                        wget -O - "$SRC" | grep .deb | grep -Po 'href=\"\K.*?(?=")' | tee "$filename"_new &> /dev/null
+                        if [ "${filename##*.}" == deb ]; then
+                            touch "$filename"_new &> /dev/null
+                        else
+                            wget -O - "$SRC" | grep .deb | grep -Po 'href=\"\K.*?(?=")' | tee "$filename"_new &> /dev/null
+                        fi
                         if [ -f "$filename"_old ]; then
                             diff "$filename"_new "$filename"_old > "$filename"_diff
                         else
                             popd > /dev/null || exit
                             # Haha fresh , add first.
-                            bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC"
+                            if [ "$COPY" == "copy" ]; then
+                                bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC" "$COPY" "$DEST_CODE"
+                            else
+                                bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC"
+                            fi
                             pushd "$CACHEDIR" > /dev/null || exit
                         fi
 
@@ -54,7 +85,11 @@ for dist in "${dists[@]}"; do
                         popd > /dev/null || exit
                         if [[ "$DIFF" -gt 0 ]]; then
                             echo "INFO Now will update packages to $dist $repo $codename $comp"
-                            bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC"
+                            if [ "$COPY" == "copy" ]; then
+                                bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC" "$COPY" "$DEST_CODE"
+                            else
+                                bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC"
+                            fi
                         fi
 
                     done

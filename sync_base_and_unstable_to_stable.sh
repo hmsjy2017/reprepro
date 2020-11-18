@@ -35,14 +35,14 @@ if [ -z "$CODENAME" ]; then
     exit 0
 fi
 
-TUSER=$( whoami)
+TUSER=$(whoami)
 # MYDIR=$(
 #     cd "$(dirname "$0")" || exit
 #     pwd
 # )
 ## updates文件中Suite: stable ，这里的stable是要更新的仓库（比如base仓库）的codename或分支名称。
 function syncbase() {
-    TUSER=$( whoami)
+    TUSER=$(whoami)
     CODENAME="$1"
     if [[ -d /var/www/repos/stable/device/ ]]; then
         pushd /var/www/repos/stable/device/ > /dev/null || exit
@@ -50,11 +50,13 @@ function syncbase() {
         sudo sed -ri 's/^Update.*?/Update: uos/g' conf/distributions
         cat << EOF | sudo tee conf/updates
 Name: uos
-Suite: stable
+#Suite: stable
+Suite: eagle/sp2
 Architectures: i386 amd64 arm64 mips64el sw_64 source
 Components: main contrib non-free
 #Method: http://pools.uniontech.com/ppa/uos-base/
-Method: file:///data/apt-mirror/mirror/pools.uniontech.com/ppa/uos-base/
+#Method: file:///data/apt-mirror/mirror/pools.uniontech.com/ppa/uos-base/
+Method: file:///data/apt-mirror-desktop/mirror/pools.uniontech.com/desktop-professional/
 VerifyRelease: blindtrust
 EOF
         if [[ -z "$2" ]]; then
@@ -66,7 +68,7 @@ EOF
     fi
 }
 function syncdevice() {
-    TUSER=$( whoami)
+    TUSER=$(whoami)
     CODENAME="$1"
     if [[ -z "$2" ]]; then
         shift 1
@@ -100,18 +102,20 @@ EOF
     fi
 }
 function check_base() {
-    TUSER=$( whoami)
+    TUSER=$(whoami)
     CODENAME="$1"
     if [[ -d /var/www/repos/stable/device/ ]]; then
         pushd /var/www/repos/stable/device/ > /dev/null || exit
         sudo sed -ri 's/^Update.*?/Update: uos/g' conf/distributions
         cat << EOF | sudo tee conf/updates
 Name: uos
-Suite: stable
-Architectures: amd64 arm64 mips64el sw_64 source
+#Suite: stable
+Suite: eagle/sp2
+Architectures: i386 amd64 arm64 mips64el sw_64 source
 Components: main contrib non-free
 #Method: http://pools.uniontech.com/ppa/uos-base/
-Method: file:///data/apt-mirror/mirror/pools.uniontech.com/ppa/uos-base/
+#Method: file:///data/apt-mirror/mirror/pools.uniontech.com/ppa/uos-base/
+Method: file:///data/apt-mirror-desktop/mirror/pools.uniontech.com/desktop-professional/
 VerifyRelease: blindtrust
 EOF
         sudo GNUPGHOME=/home/"$TUSER"/.gnupg reprepro -V --noskipold checkupdate "$CODENAME" | grep -v kept
@@ -120,7 +124,7 @@ EOF
 }
 
 function check_device() {
-    TUSER=$( whoami)
+    TUSER=$(whoami)
     CODENAME="$1"
     shift 1
     codenames=("$@")
@@ -132,7 +136,7 @@ function check_device() {
             cat << EOF | sudo tee -a conf/updates
 Name: $codename
 Suite: $codename
-Architectures: amd64 arm64 mips64el sw_64 source
+Architectures: i386 amd64 arm64 mips64el sw_64 source
 Components: main contrib non-free
 Method: http://127.0.0.1/unstable/device/
 #Method: file:///data/repo-dev-wh/ppa/dde-apricot

@@ -1,14 +1,14 @@
 #!/usr/bin/bash
-#v1.1 by sandylaw <freelxs@gmail.com> 2020-08-26
-#This script is add packages of update/dist_repo_codename_comps.list to the apt repos.
+#v1.1 by sandylaw <freelxs@gmail.com> 2020-09-25
+#This script is just try add packages of update/dist_repo_codename_comps.list to the apt repos.
 #Eg. unstable_device_mars-sp1_main.list
 function help() {
     # Display Help
-    echo "Update packages of the list/*.list"
+    echo "Just try update packages of the list/*.list"
     echo
-    echo "Syntax: bash updatepackages.sh [copy]"
+    echo "Syntax: bash tryupdate.sh [copy]"
     echo "Setting:list/*.list"
-    echo "copy:Add the same packages to multi repos."
+    echo "copy:Try add the same packages to multi repos."
     echo "/etc/crontab has set a cron task."
 
 }
@@ -57,11 +57,12 @@ for dist in "${dists[@]}"; do
                         #time=$(date +%Y%m%d%H%M)
                         filename="$listname"_$(basename "$SRC")
                         pwd
+                        bash Man_APT_Repository.sh $dist" "$repo" "$codename" list|grep amd64 |grep base-files | grep main|awk -F "|" '{print $3}'|awk -F ":" '{print $2}'|tr "\n" " " >> /tmp/old.list
                         pushd "$CACHEDIR" > /dev/null || exit
                         if [ "${filename##*.}" == deb ]; then
                             touch "$filename"_new &> /dev/null
                         else
-                            wget -O - "$SRC" | grep .deb | grep -Po 'href=\"\K.*?(?=")' | tee "$filename"_new &> /dev/null
+                            wget -O - "$SRC" 2>/dev/null| grep .deb | grep -Po 'href=\"\K.*?(?=")'|awk -F "_" '{print $1}'|sort -u 
                         fi
                         if [ -f "$filename"_old ]; then
                             diff "$filename"_new "$filename"_old > "$filename"_diff
@@ -69,9 +70,9 @@ for dist in "${dists[@]}"; do
                             popd > /dev/null || exit
                             # Haha fresh , add first.
                             if [ "$COPY" == "copy" ]; then
-                                bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC" "$COPY" "$DEST_CODE"
+                                # bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC" "$COPY" "$DEST_CODE"
                             else
-                                bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC"
+                                # bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC"
                             fi
                             pushd "$CACHEDIR" > /dev/null || exit
                         fi
@@ -85,9 +86,9 @@ for dist in "${dists[@]}"; do
                         if [[ "$DIFF" -gt 0 ]]; then
                             echo "INFO Now will update packages to $dist $repo $codename $comp"
                             if [ "$COPY" == "copy" ]; then
-                                bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC" "$COPY" "$DEST_CODE"
+                                # bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC" "$COPY" "$DEST_CODE"
                             else
-                                bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC"
+                                # bash Add_to_APT_Repository.sh "$dist" "$repo" "$codename" "$comp" "$SRC"
                             fi
                         fi
 

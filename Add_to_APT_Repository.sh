@@ -66,22 +66,39 @@ fi
 COMP=$4
 TUSER=$(whoami)
 #echo "$TUSER"
-DEBDIR=/home/"$TUSER"/tmp/debs
+DEBDIR=/home/"$TUSER"/apt/debs
 mkdir -p "$DEBDIR" && cd "$_" || exit
 URL=$5
 # common function
 isurl=$(check_url "$URL")
-if [ "$isurl" == 0 ] && [ "${URL: -1}" == "/" ]; then
+#if [ "$isurl" == 0 ] && [ "${URL: -1}" == "/" ]; then
+if [ "$isurl" == 0 ]; then
     # httrack -s0 -w "$URL"
     wget --mirror -e robots=off -r -np "$URL"
 elif [ -d "$URL" ]; then
-    rsync -r "$URL" .
+    sudo rsync -r "$URL" .
 else
     help
-    echo "Pleach chek the URL, must end with '/' "
+    echo "Pleach chek the URL, dir should end with '/' "
     exit 0
 fi
-
-add_to_repository "$TUSER" "$REPOSDIR" "$CODENAME" "$COMP" "$DEBDIR"
+COPY=$6
+if [ "$COPY" == "copy" ]; then
+    if [[ "$7" == "all" ]]; then
+        DEST_CODE="all"
+    else
+        DEST_CODE=$(check_word_in_array "$7" "${codenames[*]}")
+        if [ -z "$DEST_CODE" ]; then
+            echo "Pleaase check the codename."
+            echo "The system has codename list:${codenames[*]}"
+            exit 0
+        fi
+    fi
+fi
+if ! [ "$COPY" == "copy" ]; then
+    add_to_repository "$TUSER" "$REPOSDIR" "$CODENAME" "$COMP" "$DEBDIR"
+elif [ "$COPY" == "copy" ]; then
+    add_to_repository "$TUSER" "$REPOSDIR" "$CODENAME" "$COMP" "$DEBDIR" "$COPY" "$DEST_CODE"
+fi
 echo "Clening:delete the $DEBDIR"
 sudo rm -rf "$DEBDIR"

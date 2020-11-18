@@ -1,10 +1,34 @@
 # 使用 reprepro 建立 APT 软件仓库
 
+## 专用设备软件源仓库规划
+
+### 专用设备版软件源仓库名称
+
+依据产品线定义仓库名称：device
+
+### 专用设备版软件源仓库分支管理
+
+同一个产品线不同的维护分支采用 codename 加上维护版本定义。
+
+GUI 产品：mars mars/sp1 mars/sp2
+
+CLI 产品：venus venus/sp1 venus/sp2
+
+### 专用设备版软件源仓库分类
+
+- 内网 ppa 开发仓库
+  `deb http://10.8.0.113/unstable/device/ CODENAME main contrib non-free`
+
+- 内网主仓库
+  `deb deb http://10.8.0.113/stable/device/ CODENAME main contrib non-free`
+- 外网发布仓库
+  `deb https://device-packages.chinauos.com/device/ CODENAME main contrib non-free`
+
 ## 自建 APT 仓库脚本
 
 ### Setup_Reprepro.sh
 
-目标：在`/var/www/repos/apt`目录下自建指定创建多个 dist,例如`stable、unstable`，可以指定创建多个`repos`,例如`device-gui device-cli`；可以指定多个 codename，例如`fou fou/sp1 fou/sp2 fou/sp3`。
+目标：在`/var/www/repos/apt`目录下自建指定创建多个 dist,例如`stable、unstable`，可以指定创建多个`repos`,例如`device`；可以指定多个 codename，例如`mars mars/sp1 venus venus/sp1`。
 
 用法：普通用户执行命令 `bash Setup_Reprepro.sh`
 
@@ -18,10 +42,12 @@ GPGEMAIL=devicepackages@uniontech.com
 根据提示以此输入：
 
 - dist:stable unstable and so on
-- repos:device-gui device-cli and so on
-- codename: fou fou/sp1 fou/sp2 and so on
+- repos:device and so on
+- codename: mars mars/sp1 venus venus/sp1 and so on
 
-最后将 GPG KEY 复制到仓库目录。
+项目目录的.gnupg 会复制到主目录，如果项目目录没有会创建新的 gpg key。
+
+如果没有/var/www/repos文件夹，将提示是否创建链接到/var/www/repos。
 
 ### Add_to_APT_Repository.sh
 
@@ -35,13 +61,14 @@ GPGEMAIL=devicepackages@uniontech.com
 
 ```bash
 dist: stable unstable
-repo: device-gui device-cli and so on
-codename: fou fou/sp1 fou/sp2 and so on
+repo: device and so on
+codename: mars mars/sp1 venus venus/sp1 and so on
 crp_rep_url:crp_rep_url or local dir path
 ```
 
 需要说明的是，输入或粘贴`crp_rep_url`后要跟上`/`以明确表示是目录，也可以跟本地目录。
 **注意此地址要和 repos 保持一致，不要将 device-cli 的 crp 仓库地址加到 device-gui 仓库，反之亦然。**
+**专用设备 codename 有变化，device-gui 版本对应的 codename 为 mars，device-cli 版本对应的 codename 为 venus，故仓库 repos 统一为 device，只在 codename 中区分**
 
 从更新 gitlab 不同分支，到 crp 对应不同仓库构建软件包，到添加到 apt 仓库，需要人工分辨对应的是什么分支、什么版本、什么仓库，此部分操作需谨慎进行。
 
@@ -55,8 +82,8 @@ crp_rep_url:crp_rep_url or local dir path
 
 ```bash
 dist: stable unstable
-repo: device-gui device-cli and so on
-codename: fou fou/sp1 fou/sp2 and so on
+repo: device and so on
+codename: mars mars/sp1 venus venus/sp1 and so on
 action: list remove
 #list后不跟packagename
 #remove支持一次性删除多个软件包,以空格间隔
@@ -64,7 +91,59 @@ action: list remove
 
 删除软件包将同时删除源码包。
 
----
+### list/addtolist.sh
+
+目标：增加软件仓库地址，比如 crp 地址，上游软件源地址，将末级目录添加到对应的软件更新清单。
+用法：普通用户执行命令 `bash addtolist.sh dist_repo_codename_comps.list`
+其中已设定：
+
+```bash
+dist: unstable
+repo: device and so on
+codename: mars mars/sp1 venus venus/sp1 and so on
+# codename中的“/”请转为"-"
+comps：main contrib non-free
+```
+
+### updatepackages.sh
+
+目标：将 list/dist_repo_codename_comps.list 中定义的软件包添加到对应的仓库
+用法：普通用户执行命令 `bash updatepackages.sh`
+
+**默认已设置定时任务，配置在/etc/crontab 已定义，3 个小时检查一次更新。**
+**检测对比文件及日志在~/.cache/apt-repos/目录，如需强制更新，可删除此目录。**
+
+### sync_base_and_unstable_to_stable.sh
+
+目标：同步上游仓库。主要用途为主仓库，也就是 stable 仓库更新 base 仓库以及推送测试无误的 unstable 仓库到 stable 仓库。
+用法：普通用户执行命令 `bash syncupstream.sh codename syncbase|syncdevice|syncall|checkbase|checkdevice|checkall [force]`
+
+其中已设定：
+
+```bash
+codename: mars mars/sp1 venus venus/sp1 and so on
+checkbase|checkdevice|checkall:检查更新base仓库、检查unstable仓库、检查全部
+syncbase|syncdevice|syncall：更新base仓库、更新unstable仓库、更新全部
+force：可选参数，强制更新
+
+```
+
+### cache_packages_from_main_repos.sh
+
+目标：通过chroot方式，与运行代码主机架构相同，从桌面版仓库抓包到本地，并添加到仓库。
+用法：普通用户执行命令 `bash cache_packages_from_main_repos.sh`
+
+设定：
+```
+非Amd架构，将download包后同步到服务器，同步后请到服务器添加包到仓库。
+
+cache_packages_from_main_repos.sh 代码本身已设定为添加包时用copy方式，同时添加到mars和venus仓库。
+
+list/fou-sp2/ list/eagle-sp2两个文件夹下有相应的抓包源和软件包列表。
+
+按照规划，后期不再用抓包的方式，而是通过crp构建，故代码只设计了sp2仓库抓包。
+
+```
 
 ---
 
